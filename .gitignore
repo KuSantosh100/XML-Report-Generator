@@ -1,2 +1,15 @@
 sqa_automation-node.zip
-sqa_automation-node/
+sqa_automation-node
+.DS_Store
+
+
+# Environment variables and secrets
+# Environment variables and secrets
+backend/.env
+.env
+.env.*
+!.env.example
+
+# Dependencies
+
+node_modules/
