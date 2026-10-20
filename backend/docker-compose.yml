@@ -1,0 +1,15 @@
+services:
+  sqa-report-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sqa-report-backend
+    restart: unless-stopped
+    ports:
+      - "1500:1500"
+    environment:
+      - NODE_ENV=production
+      - PORT=1500
+      - DB_URL=mongodb+srv://appUser:sQS1dKUlTQ0gImm4@v-assure.4ikmz.mongodb.net/VAssureDatabase?retryWrites=true&w=majority
+    volumes:
+      - ./public/generated_reports:/app/public/generated_reports

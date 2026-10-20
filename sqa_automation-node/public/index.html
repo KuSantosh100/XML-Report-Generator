@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQA Report Studio — PDF Report Generator</title>
+  
+  <!-- Early Dark Mode Detection (Prevents FOUC) -->
+  <script>
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  </script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            // Orangish-yellow brand palette (Warm Amber / Golden Orange)
+            brand: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              200: '#fde68a',
+              300: '#fcd34d',
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+              800: '#92400e',
+              900: '#78350f',
+            },
+            // Professional enterprise blue palette
+            corp: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              200: '#bfdbfe',
+              300: '#93c5fd',
+              400: '#60a5fa',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans min-h-screen flex flex-col transition-colors duration-200">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-white dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm transition-colors duration-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <!-- Logo with Orangish-Yellow to Blue gradient -->
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-500 via-amber-500 to-corp-600 flex items-center justify-center text-white shadow-md shadow-brand-500/25">
+          <i data-lucide="file-check-2" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-bold text-lg text-slate-900 dark:text-white tracking-tight">SQA Report Studio</span>
+            <span class="bg-corp-50 dark:bg-corp-950/70 text-corp-700 dark:text-corp-300 text-xs px-2 py-0.5 rounded-full font-medium border border-corp-200 dark:border-corp-800/60">v3.4 Engine</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Robot Framework output.xml &rarr; Enterprise PDF Reporter</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2.5">
+        <!-- DB / Engine status badge -->
+        <div id="systemStatusBadge" class="hidden sm:flex items-center space-x-2 text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
+          <span class="w-2 h-2 rounded-full bg-brand-400 animate-pulse" id="statusDot"></span>
+          <span id="statusText">Checking system...</span>
+        </div>
+
+        <!-- Sample XML button (Warm Orangish-Yellow) -->
+        <button id="loadSampleBtn" type="button" class="inline-flex items-center space-x-1.5 text-xs font-medium text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/50 hover:bg-brand-100 dark:hover:bg-brand-900/40 border border-brand-200 dark:border-brand-800/80 px-3 py-1.5 rounded-xl transition-all shadow-sm">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-brand-600 dark:text-brand-400"></i>
+          <span>Load Sample XML</span>
+        </button>
+
+        <!-- Dark Mode Toggle Button -->
+        <button id="themeToggleBtn" type="button" class="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 transition-all" title="Toggle theme (Light / Dark)">
+          <i data-lucide="sun" class="w-4 h-4 hidden dark:block text-brand-400"></i>
+          <i data-lucide="moon" class="w-4 h-4 block dark:hidden text-corp-600"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- LEFT COLUMN: Input, XML Extraction & Form Parameters -->
+      <div class="lg:col-span-5 space-y-6">
+
+        <!-- Upload & Extraction Card -->
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 space-y-4 transition-colors">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center space-x-2">
+              <i data-lucide="upload-cloud" class="w-4 h-4 text-brand-500"></i>
+              <span>1. Upload Output.xml</span>
+            </h2>
+            <span id="fileBadge" class="hidden text-xs bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full font-medium">Ready</span>
+          </div>
+
+          <!-- Drag and Drop Zone -->
+          <div id="dropZone" class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 dark:hover:border-brand-400 bg-slate-50 dark:bg-slate-950/50 hover:bg-brand-50/30 dark:hover:bg-brand-950/20 rounded-xl p-6 text-center cursor-pointer transition-all duration-200 relative group">
+            <input type="file" id="fileInput" accept=".xml" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+            <div class="flex flex-col items-center justify-center space-y-2 pointer-events-none">
+              <div class="w-12 h-12 rounded-full bg-brand-100 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <i data-lucide="file-code" class="w-6 h-6"></i>
+              </div>
+              <div class="text-sm font-medium text-slate-700 dark:text-slate-300">
+                <span class="text-brand-600 dark:text-brand-400 font-semibold underline">Click to choose output.xml</span> or drag & drop
+              </div>
+              <p class="text-xs text-slate-400 dark:text-slate-500">Supports standard Robot Framework output.xml (up to 100MB)</p>
+            </div>
+          </div>
+
+          <!-- Active File Info & Detected Stats -->
+          <div id="fileInfoBox" class="hidden bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2.5 overflow-hidden">
+                <i data-lucide="file-text" class="w-5 h-5 text-corp-600 dark:text-corp-400 flex-shrink-0"></i>
+                <div class="truncate">
+                  <p id="fileName" class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">output.xml</p>
+                  <p id="fileSize" class="text-[11px] text-slate-500 dark:text-slate-400">17.25 MB</p>
+                </div>
+              </div>
+              <button id="clearFileBtn" type="button" class="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 p-1 rounded-md transition-colors" title="Remove file">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <!-- Auto-Extracted Test Details Banner -->
+            <div class="border-t border-slate-200 dark:border-slate-800 pt-3 grid grid-cols-2 gap-2 text-xs">
+              <div class="bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                <span class="text-slate-400 dark:text-slate-500 text-[10px] block font-medium">TEST STATUS</span>
+                <span id="detectedStatus" class="font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1 mt-0.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                  <span>PASS</span>
+                </span>
+              </div>
+              <div class="bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                <span class="text-slate-400 dark:text-slate-500 text-[10px] block font-medium">TAG / SCRIPT ID</span>
+                <span id="detectedTagId" class="font-semibold text-slate-800 dark:text-slate-200 truncate block mt-0.5">BASICS_PQ_LIMS_14</span>
+              </div>
+              <div class="bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                <span class="text-slate-400 dark:text-slate-500 text-[10px] block font-medium">SCRIPT VERSION</span>
+                <span id="detectedScriptVersion" class="font-semibold text-slate-800 dark:text-slate-200 block mt-0.5">1.1</span>
+              </div>
+              <div class="bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                <span class="text-slate-400 dark:text-slate-500 text-[10px] block font-medium">EVIDENCE FOUND</span>
+                <span id="detectedScreenshots" class="font-semibold text-brand-600 dark:text-brand-400 block mt-0.5">46 Screenshots</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Configuration Parameters Form -->
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 space-y-4 transition-colors">
+          <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center space-x-2">
+              <i data-lucide="sliders" class="w-4 h-4 text-corp-600 dark:text-corp-400"></i>
+              <span>2. Report Parameters</span>
+            </h2>
+            <button id="resetFormBtn" type="button" class="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center space-x-1 transition-colors">
+              <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
+              <span>Reset Defaults</span>
+            </button>
+          </div>
+
+          <!-- Tabs: Required vs Optional vs Branding -->
+          <div class="flex border-b border-slate-200 dark:border-slate-800">
+            <button type="button" id="tabBtnCore" class="tab-btn px-4 py-2 text-xs font-semibold text-brand-600 dark:text-brand-400 border-b-2 border-brand-500 dark:border-brand-400 focus:outline-none transition-colors">
+              Required Details
+            </button>
+            <button type="button" id="tabBtnOptional" class="tab-btn px-4 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border-b-2 border-transparent focus:outline-none transition-colors">
+              Optional & Overrides
+            </button>
+            <button type="button" id="tabBtnMode" class="tab-btn px-4 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border-b-2 border-transparent focus:outline-none transition-colors">
+              Template & Branding
+            </button>
+          </div>
+
+          <form id="reportForm" class="space-y-4">
+
+            <!-- TAB 1: CORE / REQUIRED DETAILS -->
+            <div id="tabCoreContent" class="space-y-4">
+              <!-- Report Template / Type -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                  <span>Report Template Type *</span>
+                  <span class="text-[11px] text-corp-600 dark:text-corp-400 font-normal">Controls page layout</span>
+                </label>
+                <select id="reportType" name="reportType" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors">
+                  <option value="Type0" selected>Type 0: Operational Qualification Protocol & Table of Contents (Original Engine)</option>
+                  <option value="Type5">Type 5: Modern Landscape Summary & Steps</option>
+                  <option value="Type3">Type 3: Veeva Classic Format (Version History + Table)</option>
+                  <option value="Type1">Type 1: Enterprise Multi-Script Summary</option>
+                  <option value="Type4">Type 4: Tabular Form Instruction Matrix</option>
+                  <option value="Type6">Type 6: Automated Script Reviewer Assessment</option>
+                  <option value="Type7">Type 7: System Under Test & Objectives Protocol</option>
+                  <option value="Type8">Type 8: High-Density Evidence Format</option>
+                </select>
+                <p id="templateDescription" class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Formal qualification protocol with centered Wonder Pharma logo, Operational Qualification cover, Table of Contents, and execution steps.</p>
+              </div>
+
+              <!-- Project Name -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Project Name *</label>
+                <input type="text" id="projectName" name="projectName" value="Operational Qualification" required class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. Operational Qualification" />
+              </div>
+
+              <!-- Organization Name & Vendor -->
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Organization Name *</label>
+                  <input type="text" id="orgName" name="orgName" value="Wonder Pharma" required class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. Wonder Pharma" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Supported Release *</label>
+                  <input type="text" id="veevaRelease" name="veevaRelease" value="24R1" required class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. 24R1" />
+                </div>
+              </div>
+
+              <!-- Vault Details -->
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Vault Name *</label>
+                  <input type="text" id="vaultName" name="vaultName" value="Spotline Vault" required class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. Spotline Vault" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Vault Environment *</label>
+                  <select id="vaultEnvironment" name="vaultEnvironment" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors">
+                    <option value="Development" selected>Development</option>
+                    <option value="Validation Sandbox">Validation Sandbox</option>
+                    <option value="Production">Production</option>
+                    <option value="Demo">Demo</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Vault ID & URL -->
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Vault ID</label>
+                  <input type="text" id="veevaVaultId" name="veevaVaultId" value="12345" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. 12345" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Tester / Author *</label>
+                  <input type="text" id="testerName" name="testerName" value="Automation" required class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. Automation" />
+                </div>
+              </div>
+
+              <!-- Run / Batch ID -->
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Run / Execution #</label>
+                  <input type="text" id="runNo" name="runNo" value="Run-01" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. Run-01" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Batch ID</label>
+                  <input type="text" id="batchId" name="batchId" value="3" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. 3" />
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 2: OPTIONAL & OVERRIDES -->
+            <div id="tabOptionalContent" class="hidden space-y-4">
+              <!-- Custom Script Title -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Custom Test Script Title</label>
+                <input type="text" id="customTestCaseName" name="customTestCaseName" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="Leave blank to use title from output.xml" />
+              </div>
+
+              <!-- Custom Script ID & Version -->
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Custom Tag / Script ID</label>
+                  <input type="text" id="customTestCaseId" name="customTestCaseId" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. BASICS_PQ_LIMS_14" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Script Version</label>
+                  <input type="text" id="customScriptVersion" name="customScriptVersion" value="1.1" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. 1.1" />
+                </div>
+              </div>
+
+              <!-- Description / Purpose -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Test Purpose / Description</label>
+                <textarea id="customDescription" name="customDescription" rows="2" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="Automated verification test run"></textarea>
+              </div>
+
+              <!-- Requirement & Reference Numbers -->
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Requirement(s) Tested</label>
+                  <input type="text" id="customRequirementNo" name="customRequirementNo" value="NA" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. REQ-1001 or NA" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">V-Assure Reference #</label>
+                  <input type="text" id="customVassureRefNo" name="customVassureRefNo" value="NA" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. VREF-1001 or NA" />
+                </div>
+              </div>
+
+              <!-- Approver & Quality Approver -->
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Primary Approver</label>
+                  <input type="text" id="approver" name="approver" value="NA" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. Sukumar Dasi" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Quality Approver</label>
+                  <input type="text" id="qualityApprover" name="qualityApprover" value="NA" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" placeholder="e.g. Quality Assurance" />
+                </div>
+              </div>
+
+              <!-- Vault URL & Project Type -->
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Vault Login URL</label>
+                  <input type="url" id="vaultUrl" name="vaultUrl" value="https://login.veevavault.com" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Project System Type</label>
+                  <select id="projectType" name="projectType" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors">
+                    <option value="LIMS" selected>LIMS (Laboratory Information)</option>
+                    <option value="Quality">Quality / QualityDocs</option>
+                    <option value="eTMF">eTMF (Clinical Trial Master File)</option>
+                    <option value="QMS">QMS (Quality Management System)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 3: TEMPLATE MODE & BRANDING -->
+            <div id="tabModeContent" class="hidden space-y-4">
+              <!-- Execution Report vs Blank Template Switch -->
+              <div class="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 space-y-2">
+                <span class="block text-xs font-semibold text-slate-800 dark:text-slate-200">Report Output Mode</span>
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="flex items-center space-x-2 text-xs p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 cursor-pointer hover:border-brand-500 dark:hover:border-brand-400">
+                    <input type="radio" name="reportModeRadio" value="execution" checked class="text-brand-500 focus:ring-brand-500 accent-amber-500" />
+                    <div>
+                      <span class="font-semibold text-slate-800 dark:text-slate-200 block">Execution Report</span>
+                      <span class="text-[10px] text-slate-500 dark:text-slate-400">With evidence & steps</span>
+                    </div>
+                  </label>
+                  <label class="flex items-center space-x-2 text-xs p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 cursor-pointer hover:border-brand-500 dark:hover:border-brand-400">
+                    <input type="radio" name="reportModeRadio" value="template" class="text-brand-500 focus:ring-brand-500 accent-amber-500" />
+                    <div>
+                      <span class="font-semibold text-slate-800 dark:text-slate-200 block">Blank Protocol</span>
+                      <span class="text-[10px] text-slate-500 dark:text-slate-400">For dry run & review</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Intentionally Left Blank filter -->
+              <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl">
+                <div>
+                  <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 block">Smart Blank Page Formatting</span>
+                  <span class="text-[11px] text-slate-500 dark:text-slate-400 block">2-pass filter for Intentionally Left Blank padding</span>
+                </div>
+                <input type="checkbox" id="filterBlankPages" checked class="w-4 h-4 text-brand-500 rounded border-slate-300 dark:border-slate-700 focus:ring-brand-500 accent-amber-500" />
+              </div>
+
+              <!-- Organization Logo & Branding -->
+              <div class="space-y-2">
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Report Cover Logo (Appears on Cover Page)</label>
+                <div class="flex items-center space-x-3 p-3 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl">
+                  <div class="h-12 w-40 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center p-1 overflow-hidden">
+                    <img id="logoPreviewImg" src="/logo_Type0_template_false.jpg" alt="Wonder Pharma Logo" class="max-h-full max-w-full object-contain" />
+                  </div>
+                  <div class="flex-1">
+                    <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 block">Wonder Pharma Logo (Default)</span>
+                    <span class="text-[10px] text-slate-500 dark:text-slate-400 block">Appears prominently at the top of the cover page in Type 0.</span>
+                  </div>
+                </div>
+                <div class="pt-1">
+                  <label class="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">Upload custom replacement logo (Optional):</label>
+                  <input type="file" id="logoInput" accept="image/png,image/jpeg" class="w-full text-xs text-slate-500 dark:text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-50 dark:file:bg-brand-950/60 file:text-brand-700 dark:file:text-brand-300 hover:file:bg-brand-100 dark:hover:file:bg-brand-900/60" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit Button (Amber to Blue gradient) -->
+            <div class="pt-2">
+              <button id="generateBtn" type="submit" class="w-full bg-gradient-to-r from-brand-500 via-amber-500 to-corp-600 hover:from-brand-600 hover:via-amber-600 hover:to-corp-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md shadow-brand-500/25 flex items-center justify-center space-x-2 transition-all transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed">
+                <i data-lucide="file-cog" class="w-5 h-5"></i>
+                <span id="generateBtnText">Generate PDF Report</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN: Output, Live PDF Viewer & History -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- Report Status & Actions Card -->
+        <div id="reportActionsCard" class="hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 flex flex-wrap items-center justify-between gap-3 transition-colors">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center">
+              <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h3 id="reportTitleHeader" class="text-sm font-bold text-slate-900 dark:text-white truncate max-w-xs sm:max-w-md">Report Generated</h3>
+              <div class="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <span id="reportSizeBadge" class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded font-mono text-[11px]">3.77 MB</span>
+                <span id="reportDurationBadge" class="bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 px-2 py-0.5 rounded font-mono text-[11px]">18.4s</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <!-- Download Button (Blue with hover glow) -->
+            <a id="downloadReportBtn" href="#" download class="inline-flex items-center space-x-1.5 bg-corp-600 hover:bg-corp-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-sm transition-all shadow-corp-600/20">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              <span>Download PDF</span>
+            </a>
+            <a id="openNewTabBtn" href="#" target="_blank" class="inline-flex items-center space-x-1 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold px-3 py-2 rounded-xl transition-colors" title="Open in new window">
+              <i data-lucide="external-link" class="w-4 h-4"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- Generation In-Progress Indicator -->
+        <div id="generatingProgressBox" class="hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-8 text-center space-y-4 transition-colors">
+          <div class="w-16 h-16 rounded-full border-4 border-brand-200 dark:border-slate-800 border-t-brand-500 animate-spin mx-auto"></div>
+          <div>
+            <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Generating Enterprise PDF Report...</h3>
+            <p id="generatingStepText" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Reading XML keywords, evidence screenshots, and constructing document tables...</p>
+          </div>
+          <div class="max-w-xs mx-auto bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+            <div class="bg-gradient-to-r from-brand-500 to-corp-600 h-1.5 rounded-full animate-pulse w-3/4"></div>
+          </div>
+        </div>
+
+        <!-- PDF Preview Frame / Empty State -->
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-[750px] transition-colors">
+          <!-- Top preview toolbar -->
+          <div class="bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-300">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="eye" class="w-4 h-4 text-corp-600 dark:text-corp-400"></i>
+              <span>Interactive In-Browser PDF Preview</span>
+            </div>
+            <span id="previewPageIndicator" class="text-slate-400 dark:text-slate-500">Ready</span>
+          </div>
+
+          <!-- Empty State (Shown before first report) -->
+          <div id="previewEmptyState" class="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-950/40 space-y-4">
+            <div class="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center">
+              <i data-lucide="file-text" class="w-8 h-8"></i>
+            </div>
+            <div class="max-w-sm">
+              <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300">No Report Generated Yet</h4>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Upload your <code class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1 py-0.5 rounded font-mono">output.xml</code> file on the left (or click <strong class="text-brand-600 dark:text-brand-400">Load Sample XML</strong>), customize parameters, and click Generate.
+              </p>
+            </div>
+            <div class="flex items-center space-x-4 text-xs text-slate-400 dark:text-slate-500 pt-2 border-t border-slate-200/60 dark:border-slate-800">
+              <span class="flex items-center space-x-1"><i data-lucide="check" class="w-3.5 h-3.5 text-brand-500"></i><span>All 8 Templates</span></span>
+              <span class="flex items-center space-x-1"><i data-lucide="check" class="w-3.5 h-3.5 text-corp-500"></i><span>Embedded Evidence</span></span>
+              <span class="flex items-center space-x-1"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-500"></i><span>1-Click Download</span></span>
+            </div>
+          </div>
+
+          <!-- Interactive Embedded PDF Iframe -->
+          <iframe id="pdfPreviewFrame" class="hidden w-full flex-1 border-0 bg-slate-100 dark:bg-slate-900" title="PDF Report Preview"></iframe>
+        </div>
+
+        <!-- Recent Reports History Drawer -->
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 space-y-3 transition-colors">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+              <i data-lucide="history" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span>Recent Reports Generated (Session History)</span>
+            </h3>
+            <span id="historyCountBadge" class="text-[11px] text-slate-400 dark:text-slate-500">0 reports</span>
+          </div>
+
+          <div id="historyList" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+            <p id="emptyHistoryNotice" class="text-xs text-slate-400 dark:text-slate-500 text-center py-3">No reports generated in this session yet.</p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4 mt-auto transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-2">
+      <p>&copy; Spotline V-Assure SQA Automation Suite. Built for rapid XML report visualization.</p>
+      <div class="flex items-center space-x-4">
+        <span>FastAPI / Express Engine</span>
+        <span>&bull;</span>
+        <span class="text-brand-500 font-medium">Dark Mode Enabled</span>
+        <span>&bull;</span>
+        <span>Docker Ready</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- App Logic -->
+  <script src="/app.js"></script>
+</body>
+</html>
