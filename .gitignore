@@ -1,15 +1,22 @@
+# Dependencies
+node_modules/
+*/node_modules/
+sqa_automation-node/node_modules/
+backend/node_modules/
+
+# Archives & Large PDFs
 sqa_automation-node.zip
-sqa_automation-node
+*.pdf
+public/generated_reports/*.pdf
+backend/public/generated_reports/*.pdf
+sqa_automation-node/public/generated_reports/*.pdf
+
+# OS files
 .DS_Store
 
-
 # Environment variables and secrets
-# Environment variables and secrets
-backend/.env
 .env
 .env.*
+backend/.env
+sqa_automation-node/.env
 !.env.example
-
-# Dependencies
-
-node_modules/
